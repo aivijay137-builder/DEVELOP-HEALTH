@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node paStore.js)",
+      "Bash(node:*)",
+      "Bash(node -e \":*)"
+    ]
+  }
+}

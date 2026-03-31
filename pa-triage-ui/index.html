@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="page-title">PA Triage Queue — Develop Health</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #F8FAFC;
+      color: #1E293B;
+      min-height: 100vh;
+      border-top: 4px solid #FA5425;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #FFFFFF;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+    .header-logo { display: flex; align-items: center; flex-shrink: 0; }
+    .header-logo svg { height: 32px; width: auto; }
+    .header-divider {
+      width: 1px;
+      height: 24px;
+      background: #E2E8F0;
+      margin: 0 20px;
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #101010;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    header .sub {
+      font-size: 12px;
+      color: #94A3B8;
+      font-weight: 400;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+    header .spacer { flex: 1; }
+    .demo-toggle-btn {
+      padding: 6px 14px;
+      border-radius: 7px;
+      border: 1.5px solid #FA5425;
+      background: #FFFFFF;
+      color: #FA5425;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: background 0.12s, color 0.12s;
+    }
+    .demo-toggle-btn:hover,
+    .demo-toggle-btn.active { background: #FA5425; color: #FFFFFF; }
+
+    /* ── Main container ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    /* ── Summary bar ── */
+    .summary-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94A3B8;
+    }
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .stat-card.green  { background: #F0FDF4; border-color: #BBF7D0; }
+    .stat-card.green  .value { color: #15803D; }
+    .stat-card.green  .label { color: #4ADE80; }
+
+    .stat-card.yellow { background: #FFFBEB; border-color: #FDE68A; }
+    .stat-card.yellow .value { color: #B45309; }
+    .stat-card.yellow .label { color: #FBBF24; }
+
+    .stat-card.red    { background: #FFF1F2; border-color: #FECDD3; }
+    .stat-card.red    .value { color: #991B1B; }
+    .stat-card.red    .label { color: #FDA4AF; }
+
+    .stat-card.time   { background: #F8FAFC; border-color: #E2E8F0; }
+    .stat-card.time   .value { color: #334155; }
+    .stat-card.time   .label { color: #94A3B8; }
+
+    /* ── Bulk approve banner ── */
+    .bulk-banner {
+      background: #DCFCE7;
+      border: 1px solid #BBF7D0;
+      border-radius: 10px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .bulk-banner.hidden { display: none; }
+    .bulk-banner .banner-text {
+      font-size: 14px;
+      font-weight: 500;
+      color: #15803D;
+    }
+    .bulk-banner .banner-text span {
+      font-weight: 700;
+    }
+    .bulk-btn {
+      background: #15803D;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .bulk-btn:hover { background: #166534; }
+
+    /* ── Filter tabs ── */
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .tab {
+      padding: 7px 16px;
+      border-radius: 7px;
+      border: 1px solid #E2E8F0;
+      background: #FFFFFF;
+      font-size: 13px;
+      font-weight: 500;
+      color: #64748B;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      white-space: nowrap;
+    }
+    .tab:hover { background: #F1F5F9; }
+
+    .tab.active-all    { background: #1D4ED8; color: #FFFFFF; border-color: #1D4ED8; }
+    .tab.active-green  { background: #15803D; color: #FFFFFF; border-color: #15803D; }
+    .tab.active-yellow { background: #B45309; color: #FFFFFF; border-color: #B45309; }
+    .tab.active-red    { background: #991B1B; color: #FFFFFF; border-color: #991B1B; }
+
+    /* ── Queue list ── */
+    #queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .queue-row {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 10px;
+      overflow: hidden;
+      transition: box-shadow 0.12s, border-color 0.12s;
+    }
+    .queue-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-color: #CBD5E1; }
+    .queue-row.approved { opacity: 0.5; }
+
+    .row-summary {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    /* tier dot */
+    .tier-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .tier-dot.green  { background: #15803D; }
+    .tier-dot.yellow { background: #D97706; }
+    .tier-dot.red    { background: #DC2626; }
+
+    /* score badge */
+    .score-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      flex-shrink: 0;
+      min-width: 42px;
+      text-align: center;
+    }
+    .score-badge.green  { background: #DCFCE7; color: #15803D; }
+    .score-badge.yellow { background: #FEF3C7; color: #B45309; }
+    .score-badge.red    { background: #FEE2E2; color: #991B1B; }
+
+    /* patient + drug info */
+    .row-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .row-patient {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0F172A;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .row-meta {
+      font-size: 12px;
+      color: #94A3B8;
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* payer */
+    .row-payer {
+      font-size: 12px;
+      color: #64748B;
+      white-space: nowrap;
+      flex-shrink: 0;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* action chip */
+    .action-chip {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1.5px solid;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .action-chip.green  { color: #15803D; border-color: #86EFAC; background: #F0FDF4; }
+    .action-chip.yellow { color: #B45309; border-color: #FCD34D; background: #FFFBEB; }
+    .action-chip.red    { color: #991B1B; border-color: #FCA5A5; background: #FFF1F2; }
+    .action-chip.done   { color: #15803D; border-color: #86EFAC; background: #F0FDF4; }
+
+    /* ── Expand area ── */
+    .expand-area {
+      display: none;
+      border-top: 1px solid #E2E8F0;
+      padding: 20px 18px 22px;
+    }
+    .expand-area.open { display: block; }
+
+    .expand-inner {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 24px;
+    }
+
+    /* left column */
+    .expand-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .expand-gauge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* factor bars */
+    .expand-factors { width: 100%; }
+    .factor-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .factor-label {
+      font-size: 11px;
+      color: #64748B;
+      width: 130px;
+      flex-shrink: 0;
+      line-height: 1.3;
+    }
+    .factor-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: #E2E8F0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .factor-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .factor-pct {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      min-width: 38px;
+      text-align: center;
+    }
+
+    /* right column */
+    .expand-right {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .expand-card {
+      border: 1.5px solid;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .expand-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94A3B8;
+      margin-bottom: 6px;
+    }
+    .expand-card-body {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #334155;
+    }
+    .expand-notes {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .expand-notes-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94A3B8;
+      margin-bottom: 6px;
+    }
+    .expand-notes-body {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #475569;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .expand-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .expand-approve-btn {
+      padding: 8px 20px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s;
+    }
+    .expand-approve-btn.green  { background: #15803D; color: #FFF; }
+    .expand-approve-btn.yellow { background: #B45309; color: #FFF; }
+    .expand-approve-btn.red    { background: #991B1B; color: #FFF; }
+    .expand-approve-btn.done   { background: #E2E8F0; color: #64748B; cursor: default; }
+    .expand-approve-btn:not(.done):hover { opacity: 0.85; }
+
+    .expand-secondary-btn {
+      padding: 8px 20px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #FFFFFF;
+      border: 1.5px solid #CBD5E1;
+      color: #475569;
+      transition: background 0.12s;
+    }
+    .expand-secondary-btn:hover { background: #F1F5F9; }
+
+    /* left-accent explainability card */
+    .explain-card {
+      border: 1px solid #E2E8F0;
+      border-left-width: 4px;
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: #FFFFFF;
+    }
+    .explain-card.yellow { border-left-color: #D97706; background: #FFFBEB; }
+    .explain-card.red    { border-left-color: #DC2626; background: #FFF1F2; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.45);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 24px 28px;
+      width: 560px;
+      max-width: 92vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0F172A;
+      margin-bottom: 14px;
+    }
+    .modal-body {
+      font-size: 13px;
+      line-height: 1.7;
+      color: #475569;
+      font-family: "SF Mono", "Fira Code", monospace;
+      white-space: pre-wrap;
+    }
+    .modal-close {
+      margin-top: 20px;
+      padding: 8px 20px;
+      border-radius: 7px;
+      border: 1.5px solid #CBD5E1;
+      background: #FFF;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .modal-close:hover { background: #F1F5F9; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #0F172A;
+      color: #F8FAFC;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+      z-index: 200;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ── Demo Mode panel ── */
+    #demo-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+      background: #0F172A;
+    }
+    #demo-panel.open { max-height: 2000px; }
+
+    .demo-panel-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 36px 24px 44px;
+    }
+
+    .demo-panel-heading {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .demo-panel-heading .demo-badge {
+      background: #7C3AED;
+      color: #FFFFFF;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+    .demo-panel-heading h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #F8FAFC;
+      letter-spacing: -0.02em;
+    }
+
+    .demo-cases {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .demo-case-card {
+      background: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .demo-case-cols {
+      display: grid;
+      grid-template-columns: 200px 1fr 1fr;
+      gap: 0;
+    }
+
+    .demo-col {
+      padding: 20px 22px;
+      border-right: 1px solid #334155;
+    }
+    .demo-col:last-child { border-right: none; }
+
+    .demo-col-header {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748B;
+      margin-bottom: 14px;
+    }
+
+    /* left col */
+    .demo-score-large {
+      font-size: 48px;
+      font-weight: 800;
+      color: #FCD34D;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .demo-score-label {
+      font-size: 11px;
+      color: #94A3B8;
+      margin-bottom: 12px;
+    }
+    .demo-drug {
+      font-size: 13px;
+      font-weight: 600;
+      color: #E2E8F0;
+      margin-bottom: 3px;
+    }
+    .demo-payer {
+      font-size: 12px;
+      color: #94A3B8;
+    }
+
+    /* middle col — amber callout */
+    .demo-callout-red {
+      border: 1px solid #78350F;
+      border-left: 4px solid #F59E0B;
+      background: #1C1200;
+      border-radius: 7px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #FDE68A;
+    }
+
+    /* right col — dark callout */
+    .demo-callout-dark {
+      border: 1px solid #475569;
+      border-left: 4px solid #94A3B8;
+      background: #0F172A;
+      border-radius: 7px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.65;
+      color: #CBD5E1;
+    }
+
+    /* intervention footer */
+    .demo-intervention {
+      border-top: 1px solid #334155;
+      padding: 14px 22px;
+      font-size: 13px;
+      color: #94A3B8;
+      line-height: 1.6;
+    }
+    .demo-intervention strong {
+      color: #A78BFA;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" width="155" height="46" fill="none" viewBox="0 0 155 46"><path fill="#FCC11F" d="M44.72 14.898H29.821v14.897H44.72V14.897Z"/><path fill="#101010" d="M29.822 0v14.898L14.897 29.794H0V14.897h14.897V0h14.925Z"/><path fill="#FA5425" d="M29.793 29.795H14.897V44.72h14.896V29.795Z"/><path fill="#101010" fill-rule="evenodd" d="M59.615 0h7.379c3.102 0 5.478.866 7.155 2.571 1.677 1.733 2.515 4.11 2.515 7.1 0 2.99-.838 5.338-2.515 7.071-1.677 1.733-4.08 2.6-7.155 2.6h-7.379V0Zm3.662 16.211h3.66c1.901 0 3.355-.559 4.389-1.649 1.034-1.118 1.537-2.739 1.537-4.863 0-2.124-.503-3.746-1.537-4.836-1.034-1.118-2.487-1.677-4.388-1.677h-3.661v13.025Zm28.117-3.633v.838h-10.48c.139 1.202.502 2.096 1.117 2.711.643.587 1.481.895 2.515.895 1.566 0 2.628-.671 3.214-2.013h3.298c-.363 1.426-1.117 2.572-2.291 3.438-1.146.838-2.572 1.258-4.248 1.258-2.069 0-3.774-.671-5.06-2.013-1.285-1.341-1.928-3.13-1.928-5.338s.643-3.997 1.9-5.339c1.287-1.341 2.963-2.012 5.032-2.012 2.124 0 3.8.699 5.058 2.096 1.258 1.398 1.873 3.214 1.873 5.479Zm-6.931-4.92c-2.013 0-3.187 1.118-3.494 3.354h7.043c-.14-1.034-.531-1.844-1.146-2.46-.643-.586-1.425-.894-2.403-.894Z" clip-rule="evenodd"/><path fill="#101010" d="m101.596 5.338-1.37 3.746-.552 1.785a237.616 237.616 0 0 0-1.628 5.398 356.712 356.712 0 0 0-2.208-7.155l-1.37-3.774H90.78l5.199 14.031h3.94l5.227-14.03h-3.549Z"/><path fill="#101010" fill-rule="evenodd" d="M118.309 12.578v.838h-10.481c.14 1.202.503 2.096 1.118 2.711.643.587 1.481.895 2.515.895 1.565 0 2.627-.671 3.214-2.013h3.27c-.363 1.426-1.118 2.572-2.291 3.438-1.146.838-2.572 1.258-4.249 1.258-2.068 0-3.773-.671-5.059-2.013-1.285-1.341-1.928-3.13-1.928-5.338s.643-3.997 1.901-5.339c1.285-1.341 2.962-2.012 5.03-2.012 2.124 0 3.801.699 5.059 2.096 1.286 1.398 1.901 3.214 1.901 5.479Zm-6.96-4.92c-2.012 0-3.186 1.118-3.493 3.354h7.043c-.14-1.034-.531-1.844-1.146-2.46-.615-.586-1.425-.894-2.404-.894Z" clip-rule="evenodd"/><path fill="#101010" d="M119.707 19.37h3.41V0h-3.41v19.37Z"/><path fill="#101010" fill-rule="evenodd" d="M138.712 12.354c0 2.208-.643 3.997-1.957 5.338-1.313 1.342-3.018 2.013-5.17 2.013s-3.857-.699-5.171-2.04c-1.314-1.314-1.984-3.103-1.984-5.339s.67-3.997 1.984-5.338c1.314-1.342 3.019-2.013 5.171-2.013s3.857.67 5.17 1.985c1.286 1.341 1.957 3.13 1.957 5.394Zm-9.81 3.326c.642.783 1.537 1.174 2.683 1.174s2.04-.391 2.655-1.174c.643-.81.978-1.9.978-3.354 0-1.453-.335-2.543-.978-3.326-.643-.81-1.509-1.202-2.655-1.202s-2.041.391-2.683 1.174c-.643.783-.951 1.9-.951 3.354 0 1.453.308 2.572.951 3.354Zm23.477-8.693c-1.146-1.313-2.655-1.984-4.584-1.984-1.984 0-3.465.783-4.472 2.348V5.338h-3.298v19.37h3.438v-7.155c.978 1.425 2.432 2.152 4.332 2.152 1.901 0 3.438-.671 4.584-2.013 1.118-1.341 1.677-3.13 1.677-5.338 0-2.236-.559-4.025-1.677-5.367Zm-5.394 9.867c-1.146 0-2.013-.391-2.627-1.174-.671-.755-.979-1.873-.979-3.354 0-1.454.308-2.572.951-3.354.614-.783 1.509-1.174 2.655-1.174s2.04.391 2.655 1.146c.643.755.95 1.845.95 3.27 0 1.481-.307 2.6-.95 3.41s-1.537 1.23-2.655 1.23Z" clip-rule="evenodd"/><path fill="#101010" d="M72.276 33.121v-7.77h3.662v19.37h-3.662v-8.274h-9v8.274h-3.66V25.35h3.66v7.77h9Z"/><path fill="#101010" fill-rule="evenodd" d="M91.253 38.767v-.81c0-2.292-.642-4.11-1.872-5.507-1.258-1.397-2.935-2.096-5.059-2.096-2.068 0-3.745.67-5.03 2.012-1.258 1.342-1.901 3.13-1.901 5.339 0 2.208.642 3.997 1.928 5.338 1.286 1.342 2.99 2.013 5.059 2.013 1.677 0 3.102-.42 4.248-1.258 1.174-.866 1.929-2.012 2.292-3.438H87.62c-.587 1.342-1.649 2.013-3.214 2.013-1.034 0-1.873-.308-2.516-.895-.614-.615-.978-1.51-1.118-2.711h10.481ZM80.8 36.363c.308-2.236 1.482-3.354 3.494-3.354.978 0 1.76.308 2.404.895.615.615 1.006 1.425 1.146 2.46H80.8Zm21.633-3.885V30.69h3.41v14.032h-3.326v-1.957c-.95 1.51-2.375 2.292-4.304 2.292-1.928 0-3.466-.67-4.584-1.985-1.118-1.313-1.648-3.102-1.648-5.366s.559-4.025 1.648-5.366c1.118-1.314 2.656-1.985 4.584-1.985 1.901 0 3.298.699 4.22 2.124Zm-6.903 5.339c0 1.453.308 2.543.894 3.298.587.755 1.454 1.118 2.572 1.118s1.984-.391 2.599-1.174c.587-.755.894-1.873.894-3.354s-.307-2.572-.922-3.354c-.587-.783-1.453-1.174-2.571-1.174s-1.957.42-2.572 1.23-.894 1.928-.894 3.41Z" clip-rule="evenodd"/><path fill="#101010" d="M107.828 44.72h3.41V25.352h-3.41v19.37Zm12.296-14.03v2.599h-2.403v11.432h-3.41V33.289h-2.18v-2.6h2.18v-4.08h3.382v4.08h2.431Zm12.104 1.006c-.867-.895-2.068-1.342-3.578-1.342-1.788 0-3.214.727-4.276 2.208v-7.21h-3.382V44.72h3.41v-7.854c0-1.09.307-1.957.894-2.572a2.981 2.981 0 0 1 2.236-.95c1.761 0 2.628.866 2.628 2.655v8.72h3.409v-9.307c0-1.593-.447-2.85-1.341-3.717Z"/></svg>
+    </div>
+    <div class="header-divider"></div>
+    <h1>PA Triage Queue</h1>
+    <span class="sub">Confidence Score</span>
+    <span class="spacer"></span>
+    <button class="demo-toggle-btn" id="demo-toggle-btn">Demo Mode</button>
+  </header>
+
+  <main>
+
+    <!-- Summary bar -->
+    <div class="summary-bar" id="summary-bar">
+
+      <div class="stat-cards" id="stat-cards">
+        <!-- rendered by renderSummary() -->
+      </div>
+
+      <div class="bulk-banner hidden" id="bulk-banner">
+        <p class="banner-text">
+          <span id="banner-green-count"></span> green-tier PAs ready — bulk approve in one click
+        </p>
+        <button class="bulk-btn" id="bulk-btn">Bulk Approve (<span id="bulk-btn-count"></span>)</button>
+      </div>
+
+    </div>
+    <!-- /summary bar -->
+
+    <!-- Filter tabs -->
+    <div class="filter-tabs" id="filter-tabs">
+      <!-- rendered by renderTabs() -->
+    </div>
+    <!-- /filter tabs -->
+
+    <!-- Queue list -->
+    <div id="queue-list">
+      <!-- rendered by renderQueue() -->
+    </div>
+    <!-- /queue list -->
+
+  </main>
+
+  <!-- Demo Mode panel -->
+  <div id="demo-panel">
+    <div class="demo-panel-inner">
+      <div class="demo-panel-heading">
+        <span class="demo-badge">Live Proof</span>
+        <h2>Model Predicted These Denials</h2>
+      </div>
+      <div class="demo-cases" id="demo-cases">
+        <!-- rendered by renderDemoPanel() -->
+      </div>
+    </div>
+  </div>
+  <!-- /Demo Mode panel -->
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-body"  id="modal-body"></div>
+      <button class="modal-close" id="modal-close">Close</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <footer style="background:#101010;text-align:center;padding:18px 0 20px;font-size:11px;color:#525252;letter-spacing:0.04em;">
+    Powered by <span style="color:#FA5425;font-weight:600;">Develop Health</span> · PA Confidence Score v0.1
+  </footer>
+
+  <script src="paStore.js"></script>
+  <script>
+    // ── Toast ─────────────────────────────────────────────────────────────
+    let _toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────────────
+    function showModal(title, body) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').textContent  = body;
+      document.getElementById('modal-overlay').classList.add('open');
+    }
+    document.getElementById('modal-close').addEventListener('click', () => {
+      document.getElementById('modal-overlay').classList.remove('open');
+    });
+    document.getElementById('modal-overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('modal-overlay')) {
+        document.getElementById('modal-overlay').classList.remove('open');
+      }
+    });
+
+    // ── updateSummaryBar ──────────────────────────────────────────────────
+    // Stat cards show total dataset counts (static).
+    // Banner uses getRemainingGreen() — live unapproved count.
+    function updateSummaryBar() {
+      const { green, yellow, red, estimatedMinutes } = getStats();
+      const remaining = getRemainingGreen();
+
+      document.getElementById('stat-cards').innerHTML = `
+        <div class="stat-card green">
+          <span class="label">Green</span>
+          <span class="value">${green}</span>
+        </div>
+        <div class="stat-card yellow">
+          <span class="label">Yellow</span>
+          <span class="value">${yellow}</span>
+        </div>
+        <div class="stat-card red">
+          <span class="label">Red</span>
+          <span class="value">${red}</span>
+        </div>
+        <div class="stat-card time">
+          <span class="label">Est. Review Time</span>
+          <span class="value">${estimatedMinutes.toFixed(1)}<span style="font-size:14px;font-weight:500;color:#94A3B8;margin-left:4px;">min</span></span>
+        </div>
+      `;
+
+      const banner  = document.getElementById('bulk-banner');
+      const greenSp = document.getElementById('banner-green-count');
+      const btnSp   = document.getElementById('bulk-btn-count');
+
+      if (remaining > 0) {
+        greenSp.textContent = remaining;
+        btnSp.textContent   = remaining;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    // Keep renderSummary as an alias for backwards compat with init call
+    function renderSummary() { updateSummaryBar(); }
+
+    // ── Bulk approve ──────────────────────────────────────────────────────
+    function bulkApproveAll() {
+      const unapproved = getQueue('green').filter(pa => !isApproved(pa.id));
+      if (unapproved.length === 0) return;
+      unapproved.forEach(pa => approvePa(pa.id));
+      showToast(`✓ ${unapproved.length} PA${unapproved.length > 1 ? 's' : ''} approved`);
+      renderQueue(activeFilter);
+      updateSummaryBar();
+    }
+
+    // ── Queue-list event delegation ───────────────────────────────────────
+    document.getElementById('queue-list').addEventListener('click', e => {
+      // Approve and submit
+      const approveBtn = e.target.closest('[data-approve]');
+      if (approveBtn) {
+        e.stopPropagation();
+        approvePa(approveBtn.dataset.approve);
+        renderQueue(activeFilter);
+        updateSummaryBar();
+        return;
+      }
+      // Escalate to prescriber
+      const escalateBtn = e.target.closest('[data-escalate]');
+      if (escalateBtn) {
+        e.stopPropagation();
+        alert(`Escalation initiated for patient: ${escalateBtn.dataset.escalate}`);
+        return;
+      }
+      // View clinical notes
+      const notesBtn = e.target.closest('[data-notes]');
+      if (notesBtn) {
+        e.stopPropagation();
+        const pa = ALL_PAS.find(p => p.id === notesBtn.dataset.notes);
+        if (pa) showModal(
+          `Clinical Notes — ${pa['Patient (Anon)']} (${pa['Drug']})`,
+          pa['Clinical Notes (EHR Snapshot at PA Time)']
+        );
+        return;
+      }
+    });
+
+    document.getElementById('bulk-btn').addEventListener('click', bulkApproveAll);
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    const FACTORS = [
+      { key: 'Factor 1\nHistorical\nApproval Rate', label: 'Historical Approval Rate' },
+      { key: 'Factor 2\nDoc\nCompleteness',         label: 'Doc Completeness'         },
+      { key: 'Factor 3\nAI Answer\nQuality',        label: 'AI Answer Quality'        },
+      { key: 'Factor 4\nPayer\nFreshness',          label: 'Payer Freshness'          },
+    ];
+
+    function tierClass(tier) {
+      const t = tier.toLowerCase();
+      if (t === 'green')  return 'green';
+      if (t === 'yellow') return 'yellow';
+      return 'red';
+    }
+
+    function chipLabel(pa) {
+      if (isApproved(pa.id)) return { label: 'Approved ✓', cls: 'done' };
+      const t = pa.tier.toLowerCase();
+      if (t === 'green')  return { label: 'Approve fast',          cls: 'green'  };
+      if (t === 'yellow') return { label: 'Review needed',         cls: 'yellow' };
+      return                     { label: 'Intervention required', cls: 'red'    };
+    }
+
+    function factorColor(pct) {
+      if (pct >= 75) return { bar: '#15803D', bg: '#DCFCE7', text: '#15803D' };
+      if (pct >= 50) return { bar: '#D97706', bg: '#FEF3C7', text: '#B45309' };
+      return               { bar: '#DC2626', bg: '#FEE2E2', text: '#991B1B' };
+    }
+
+    function buildExpandArea(pa) {
+      const tc       = tierClass(pa.tier);
+      const approved = isApproved(pa.id);
+
+      // Score gauge (SVG arc)
+      const r     = 38;
+      const circ  = 2 * Math.PI * r;
+      const filled = (pa.score / 100) * circ;
+      const gaugeColor = tc === 'green' ? '#15803D' : tc === 'yellow' ? '#D97706' : '#DC2626';
+
+      const gauge = `
+        <div class="expand-gauge">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="${r}" fill="none" stroke="#E2E8F0" stroke-width="9"/>
+            <circle cx="48" cy="48" r="${r}" fill="none" stroke="${gaugeColor}" stroke-width="9"
+              stroke-dasharray="${filled.toFixed(1)} ${circ.toFixed(1)}"
+              stroke-linecap="round"
+              transform="rotate(-90 48 48)"/>
+            <text x="48" y="44" text-anchor="middle" font-size="20" font-weight="700" fill="${gaugeColor}">${pa.score}</text>
+            <text x="48" y="57" text-anchor="middle" font-size="8" fill="#94A3B8" letter-spacing="1">SCORE</text>
+          </svg>
+          <span class="score-badge ${tc}" style="font-size:12px;padding:4px 14px;margin-top:6px;">${pa.tier}</span>
+        </div>`;
+
+      // Factor bars
+      const factorBars = FACTORS.map(f => {
+        const raw = pa[f.key] || '0%';
+        const pct = parseInt(raw);
+        const col = factorColor(pct);
+        return `
+          <div class="factor-row">
+            <div class="factor-label">${f.label}</div>
+            <div class="factor-bar-wrap">
+              <div class="factor-bar-fill" style="width:${pct}%;background:${col.bar};"></div>
+            </div>
+            <div class="factor-pct" style="color:${col.text};background:${col.bg};">${raw}</div>
+          </div>`;
+      }).join('');
+
+      // Explainability card — Yellow and Red only
+      const explainSection = (tc !== 'green') ? `
+        <div class="explain-card ${tc}">
+          <div class="expand-card-title">AI Explainability</div>
+          <p class="expand-card-body">${pa['explainabilityCard']}</p>
+        </div>` : '';
+
+      // Action buttons
+      let primaryBtn;
+      if (approved) {
+        primaryBtn = `<button class="expand-approve-btn done" disabled>Approved ✓</button>`;
+      } else if (tc === 'red') {
+        primaryBtn = `<button class="expand-approve-btn red" data-escalate="${pa['Patient (Anon)']}">Escalate to prescriber</button>`;
+      } else {
+        primaryBtn = `<button class="expand-approve-btn ${tc}" data-approve="${pa.id}">Approve and submit</button>`;
+      }
+      const notesBtn = `<button class="expand-secondary-btn" data-notes="${pa.id}">View clinical notes</button>`;
+
+      return `
+        <div class="expand-inner">
+          <div class="expand-left">
+            ${gauge}
+            <div class="expand-factors">${factorBars}</div>
+          </div>
+          <div class="expand-right">
+            ${explainSection}
+            <div class="expand-notes">
+              <div class="expand-notes-title">Clinical Notes (EHR Snapshot)</div>
+              <p class="expand-notes-body">${pa['Clinical Notes (EHR Snapshot at PA Time)']}</p>
+            </div>
+            <div class="expand-actions">${primaryBtn}${notesBtn}</div>
+          </div>
+        </div>`;
+    }
+
+    // ── toggleRow ─────────────────────────────────────────────────────────
+    function toggleRow(id) {
+      // close any other open row
+      document.querySelectorAll('.expand-area.open').forEach(area => {
+        if (area.closest('.queue-row').dataset.id !== id) {
+          area.classList.remove('open');
+        }
+      });
+      const row = document.querySelector(`.queue-row[data-id="${id}"]`);
+      if (!row) return;
+      row.querySelector('.expand-area').classList.toggle('open');
+    }
+
+    // ── Queue ─────────────────────────────────────────────────────────────
+    function renderQueue(filter) {
+      const list = document.getElementById('queue-list');
+      const pas  = getQueue(filter);
+
+      if (pas.length === 0) {
+        list.innerHTML = `<p style="color:#94A3B8;font-size:14px;padding:20px 0;">No PAs in this category.</p>`;
+        return;
+      }
+
+      list.innerHTML = pas.map(pa => {
+        const tc       = tierClass(pa.tier);
+        const chip     = chipLabel(pa);
+        const approved = isApproved(pa.id);
+        return `
+          <div class="queue-row${approved ? ' approved' : ''}" data-id="${pa.id}">
+            <div class="row-summary">
+              <span class="tier-dot ${tc}"></span>
+              <span class="score-badge ${tc}">${pa.score}</span>
+              <div class="row-info">
+                <div class="row-patient">${pa['Patient (Anon)']}</div>
+                <div class="row-meta">${pa['Drug']}</div>
+              </div>
+              <span class="row-payer">${pa['Payer']} · ${pa['Plan Type']}</span>
+              <span class="action-chip ${chip.cls}">${chip.label}</span>
+            </div>
+            <div class="expand-area">${buildExpandArea(pa)}</div>
+          </div>`;
+      }).join('');
+
+      list.querySelectorAll('.row-summary').forEach(summary => {
+        summary.addEventListener('click', () => toggleRow(summary.closest('.queue-row').dataset.id));
+      });
+    }
+
+    // ── Filter tabs ───────────────────────────────────────────────────────
+    let activeFilter = 'all';
+
+    function renderTabs() {
+      const { green, yellow, red, total } = getStats();
+      const tabs = [
+        { key: 'all',    label: 'All',    count: total  },
+        { key: 'green',  label: 'Green',  count: green  },
+        { key: 'yellow', label: 'Yellow', count: yellow },
+        { key: 'red',    label: 'Red',    count: red    },
+      ];
+
+      document.getElementById('filter-tabs').innerHTML = tabs.map(t => `
+        <button
+          class="tab${activeFilter === t.key ? ' active-' + t.key : ''}"
+          data-filter="${t.key}"
+        >${t.label} (${t.count})</button>
+      `).join('');
+
+      document.querySelectorAll('.tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeFilter = btn.dataset.filter;
+          renderTabs();
+          renderQueue(activeFilter);
+        });
+      });
+    }
+
+    // ── Demo Mode ─────────────────────────────────────────────────────────
+    let demoOpen = false;
+
+    function renderDemoPanel() {
+      const cases = ALL_PAS.filter(pa => pa.demoFlag === 'Y');
+      document.getElementById('demo-cases').innerHTML = cases.map(pa => `
+        <div class="demo-case-card">
+          <div class="demo-case-cols">
+
+            <div class="demo-col">
+              <div class="demo-col-header">Yellow-tier PA — still denied</div>
+              <div class="demo-score-large">${pa.score}</div>
+              <div class="demo-score-label">Confidence Score</div>
+              <div class="demo-drug" style="color:#FCD34D;font-size:14px;margin-bottom:6px;">${pa['Patient (Anon)']}</div>
+              <div class="demo-drug">${pa['Drug']}</div>
+              <div class="demo-payer">${pa['Payer']} · ${pa['Plan Type']}</div>
+            </div>
+
+            <div class="demo-col">
+              <div class="demo-col-header">Explainability card flagged:</div>
+              <div class="demo-callout-red">${pa['explainabilityCard']}</div>
+            </div>
+
+            <div class="demo-col">
+              <div class="demo-col-header">Actual payer denial reason:</div>
+              <div class="demo-callout-dark">${pa['actualDenialReason']}</div>
+            </div>
+
+          </div>
+          <div class="demo-intervention">
+            <strong>The model identified this denial before submission.</strong>
+            Intervention window: ${pa['interventionNote']}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('demo-toggle-btn').addEventListener('click', () => {
+      demoOpen = !demoOpen;
+      const panel = document.getElementById('demo-panel');
+      const btn   = document.getElementById('demo-toggle-btn');
+      if (demoOpen) {
+        renderDemoPanel();
+        panel.classList.add('open');
+        btn.classList.add('active');
+        btn.textContent = 'Close Demo';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        panel.classList.remove('open');
+        btn.classList.remove('active');
+        btn.textContent = 'Demo Mode';
+      }
+    });
+
+    // ── Keyboard shortcuts ────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'd' || e.key === 'D') {
+        document.getElementById('demo-toggle-btn').click();
+      }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    // 1. Set page title with today's date
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    document.getElementById('page-title').textContent = `PA Triage Queue — Develop Health ${today}`;
+
+    renderSummary();
+    renderTabs();
+    renderQueue(activeFilter);
+
+    // 4. Auto-open first Yellow-tier PA (no Red in dataset) so screen is never empty
+    const firstYellow = getQueue('yellow')[0];
+    if (firstYellow) {
+      const row = document.querySelector(`.queue-row[data-id="${firstYellow.id}"]`);
+      if (row) row.querySelector('.expand-area').classList.add('open');
+    }
+  </script>
+
+</body>
+</html>
